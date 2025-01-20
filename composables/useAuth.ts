@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { useFirebase } from './firebase'
 import type { User as FirebaseUser } from 'firebase/auth'
-import { signOut as firebaseSignOut } from 'firebase/auth'
+import { signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth'
 
 interface User {
   displayName: string | null
@@ -47,7 +47,7 @@ export const useAuth = () => {
 
   // Initialize auth state if auth is available
   if (auth) {
-    auth.onAuthStateChanged((firebaseUser) => {
+    onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
       console.log('Auth state changed:', firebaseUser)
       updateUserState(firebaseUser)
     })

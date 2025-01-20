@@ -1,5 +1,4 @@
 import { GoogleAuthProvider, FacebookAuthProvider, TwitterAuthProvider, type Auth, onAuthStateChanged, type User } from 'firebase/auth'
-import { type Firestore } from 'firebase/firestore'
 import { ref } from 'vue'
 import { initializeApp, type FirebaseApp, getApps } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
@@ -13,62 +12,39 @@ const firebaseConfig = {
   appId: "1:1031807808817:web:d9e8f9c0e3c7c0b4b7b9a0"
 }
 
-// Add error message for API key error
-const getErrorMessage = (errorCode: string): string => {
-  switch (errorCode) {
-    case 'auth/api-key-not-valid':
-      return 'API anahtarı geçersiz. Lütfen Firebase yapılandırmasını kontrol edin.'
-    default:
-      return 'Firebase başlatma hatası'
-  }
-}
-
-// Singleton instances
-let app: FirebaseApp | null = null
-const auth = getAuth()
-export { auth }
-
 // Shared refs
 const isAuthenticated = ref(false)
 const user = ref<User | null>(null)
 
-// Initialize Firebase only on client side
-export const useFirebase = () => {
-  // Only initialize Firebase if we're on the client side and it hasn't been initialized
-  if (process.client && !app) {
-    try {
-      if (getApps().length === 0) {
-        console.log('Initializing Firebase with config:', { ...firebaseConfig, apiKey: '***' })
-        app = initializeApp(firebaseConfig)
-      } else {
-        console.log('Using existing Firebase app')
-        app = getApps()[0]
-      }
+// Initialize Firebase and Auth
+let app: FirebaseApp
+let auth: Auth
+let googleProvider: GoogleAuthProvider
+let facebookProvider: FacebookAuthProvider
+let twitterProvider: TwitterAuthProvider
 
-      // Check auth state initially
-      if (auth) {
-        onAuthStateChanged(auth, (currentUser) => {
-          user.value = currentUser
-          isAuthenticated.value = !!currentUser
-          console.log('Auth state changed:', currentUser ? 'User logged in' : 'User logged out')
-        })
-      }
-    } catch (error: any) {
-      console.error('Firebase initialization error:', error)
-      if (error.code) {
-        console.error('Error code:', error.code)
-        console.error('Error message:', getErrorMessage(error.code))
-      }
-    }
+// Initialize on client side
+if (process.client) {
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig)
+  } else {
+    app = getApps()[0]
   }
+  
+  auth = getAuth(app)
+  googleProvider = new GoogleAuthProvider()
+  facebookProvider = new FacebookAuthProvider()
+  twitterProvider = new TwitterAuthProvider()
 
-  // Auth providers - only create if we have auth
-  const googleProvider = auth ? new GoogleAuthProvider() : null
-  const facebookProvider = auth ? new FacebookAuthProvider() : null
-  const twitterProvider = auth ? new TwitterAuthProvider() : null
+  // Set up auth state observer
+  onAuthStateChanged(auth, (currentUser) => {
+    user.value = currentUser
+    isAuthenticated.value = !!currentUser
+  })
+}
 
+export const useFirebase = () => {
   return {
-    app,
     auth,
     googleProvider,
     facebookProvider,
@@ -77,3 +53,5 @@ export const useFirebase = () => {
     user
   }
 }
+
+export { auth, isAuthenticated, user }
